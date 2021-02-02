@@ -3,12 +3,9 @@
 
 ## dip-metadata-viewer
 
+An alpha web application for viewing and filtering metadata for data sets available through the [Data Innovation Program (DIP)](https://www2.gov.bc.ca/gov/content/data/about-data-management/data-innovation-program),  a data integration and analytics program for the Government of British Columbia. 
 
-### Usage
-
-
-
-### Project Status
+The web app is built using the [{shiny} R package](https://shiny.rstudio.com/). All metadata is sourced from the [B.C. Data Catalogue[](https://catalogue.data.gov.bc.ca/group/data-innovation-program), provided under the [Access Only licence](https://www2.gov.bc.ca/gov/content?id=1AAACC9C65754E4D89A118B875E0FBDA).
 
 ### Getting Help or Reporting an Issue
 
