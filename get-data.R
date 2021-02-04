@@ -17,8 +17,8 @@ library(purrr)
 library(janitor)
 
 
-#df of dip metadata records in the B.C. Data Catalogue
-df_dip_records <- bcdc_list_group_records("data-innovation-program") 
+#dataframe of dip metadata records in the B.C. Data Catalogue
+dip_records_df <- bcdc_list_group_records("data-innovation-program") 
 
 
 ## function to concatenate all metadata resources (files) for one record 
@@ -40,11 +40,9 @@ df
 
 
 ## grab concatenated metadata files for each dip record into a list
-dip_record_ids <- df_dip_records %>%
-  pull(id)
-
-metadata_by_record <- map(dip_record_ids,
-                          ~concatenate_all_record_resources(.x))
+metadata_by_record <- map(dip_records_df$id,
+                          ~ concatenate_all_record_resources(.x))  %>%
+  setNames(dip_records_df$title)
 
 ## save list to /tmp
 # if (!exists("tmp")) dir.create("tmp", showWarnings = FALSE)
