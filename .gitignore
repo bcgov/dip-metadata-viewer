@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 /tmp
+/data
 .DS_Store
 *html
 *pdf
