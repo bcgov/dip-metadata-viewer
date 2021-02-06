@@ -46,7 +46,7 @@ metadata_by_record <- map(dip_records_df$id,
 
 
 ## save list to /tmp
-# if (!exists("tmp")) dir.create("tmp", showWarnings = FALSE)
+# if (!dir.exists("tmp")) dir.create("tmp", showWarnings = FALSE)
 # saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
@@ -69,6 +69,16 @@ metadata_by_record$`Metadata for Income Bands by Postal Code` <-
   select(-"Variable Classification\npostal area", 
          -"Variable Classification\nplace | name | geo")
 
+#temp clean-up of Metadata for Home and Community Care                  
+metadata_by_record$`Metadata for Home and Community Care` <- 
+  metadata_by_record$`Metadata for Home and Community Care` %>%
+  mutate(`Identifier Classification` = case_when(is.na(`Identifier Classification`) ~ `Variable Classification`,
+    TRUE ~ `Identifier Classification`)) %>% 
+  select(-`Variable Classification`) %>% 
+  filter(!bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata
+NA", "MOH_HCCS_healthunit_ID2_metadata"))
+
+metadata_by_record[[1]]
                
 ## concatenate metadata files into 1 file
 #functions to rename to one column name design
