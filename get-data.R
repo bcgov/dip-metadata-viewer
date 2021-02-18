@@ -15,6 +15,7 @@ library(bcdata)
 library(dplyr)
 library(purrr)
 library(janitor)
+library(stringr)
 
 
 #dataframe of dip metadata records in the B.C. Data Catalogue
@@ -108,12 +109,19 @@ tidy_metadata <- function(x){
 }
 
 
-df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x))
+df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x)) 
 
+tidy_metadata <- df_metadata %>%
+  mutate(
+    identifier_classification = str_replace(identifier_classification, "�", "-"),
+    field_description = str_replace_all(field_description, "�", " ")
+  )
+  
 
 ## save df to /data
-# if (!dir.exists("data")) dir.create("data", showWarnings = FALSE)
-# saveRDS(df_metadata, "data/df-metadata.rds")
-# df_metadata <- readRDS("data/df-metadata.rds")
+dir.create("data", showWarnings = FALSE)
+saveRDS(df_metadata, "data/df-metadata.rds")
+saveRDS(tidy_metadata, "data/tidy-metadata.rds")
+
 
 
