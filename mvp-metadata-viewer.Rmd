@@ -1,10 +1,11 @@
 ---
-title: "Data Innovation Program"
+title: "DIP Metadata Viewer"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
     vertical_layout: fill
     social: menu
+    source_code: https://github.com/bcgov-dsp/dip-metadata-viewer
 ---
 
 <!--
@@ -22,49 +23,77 @@ See the License for the specific language governing permissions and limitations 
 -->
 
 
+
 ```{r setup, include=FALSE}
 library(flexdashboard)
+library(reactable)
+library(htmltools)
+library(crosstalk)
+library(flextable)
 
-df_metadata <- readRDS("data/df-metadata.rds")
+tidy_metadata <- readRDS("data/tidy-metadata.rds")
 ```
 
 
-Sidebar {.sidebar data-width=400}
-=======================================================================
+Search
+======================================================================
 
-### Data Innovation Program Metadata Viewer
-
-<br>
-
-
-
-
-<br>
-
-
-
-
-Column {data-width=650}
------------------------------------------------------------------------
-
-### Chart A
 
 ```{r}
-
+reactable(tidy_metadata, searchable = TRUE, minRows = 10)
 ```
 
-Column {data-width=350}
------------------------------------------------------------------------
 
-### Chart B
 
-```{r}
+```{r, include=FALSE, eval=FALSE}
+data <- SharedData$new(tidy_metadata)
 
+bscols(
+  widths = c(4,8),
+  list(
+    filter_checkbox("type", "Event Type", data, ~event_type),
+    filter_slider("part", "Number of Participants", data, ~participants, width = "100%")
+  ),
+  reactable(data, 
+            columns = list(
+  event_type = colDef(name = "Event Type" #,
+                      # footer = "Total"
+                      ),
+  date = colDef(name = "Date", format = colFormat(date = TRUE, locales = "en-GB")),
+  event_title = colDef(name = "Event"),
+  participants = colDef(name = "Number of Participants",
+                        align = "center" #,
+                        # footer = function(values) sum(values)
+                        ),
+  n = colDef(name = "Number of Ministries/Organizations",
+             align = "center",
+             na = "NA")),
+  # defaultColDef = colDef(footerStyle = list(fontWeight = "bold")),
+# filterable = TRUE,
+width = 700,
+height = "100%",
+# pagination = FALSE,
+showPageSizeOptions = TRUE,
+# pageSizeOptions = c(10, 20, 50),
+defaultPageSize = 10,
+minRows = 10,
+highlight = TRUE,
+striped = TRUE)
+)
 ```
 
-### Chart C
 
-```{r}
 
-```
+
+About 
+======================================================================
+
+Metadata files (CSV) for all available [Data Innovation Program (DIP)](https://www2.gov.bc.ca/gov/content?id=2F6E3BF426034EDBA62F3F016EE2313D) data are provided through the [B.C. Data Catalogue](https://catalogue.data.gov.bc.ca/group/data-innovation-program).
+
+This metadata viewer is built with the [`flexdashboard` R package](https://rmarkdown.rstudio.com/flexdashboard/), sourcing the DIP metadata files using the using the [`bcdata` R package](https://bcgov.github.io/bcdata/).
+  
+The [R](https://www.r-project.org/) code is available in [bcgov GitHub](https://github.com/bcgov-dsp/dip-metadata-viewer), made available under the [Apache 2.0 licence](https://github.com/bcgov/dip-metadata-viewer/blob/master/LICENSE).
+
+
+
 
