@@ -115,33 +115,45 @@ tidy_metadata <- function(x){
     )
 }
 
-df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x)) 
+df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x))
 
 tidy_metadata <- df_metadata %>%
   mutate(
     identifier_classification = str_replace(identifier_classification, "�", "-"),
     field_description = str_replace_all(field_description, "�", " ")
-  ) %>% 
-  mutate(data_provider = case_when(str_detect(bcdc_resource_name, "MOH") ~ "Ministry of Health",
-                                   str_detect(bcdc_resource_name, "Clients_case_metadata") ~ "Ministry of Health",
-                                   str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
-                                   # str_detect(bcdc_resource_name, "census geodata") ~ "Statistics Canada,
-                                   str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development & Poverty Reduction",
-                                   str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
-                                   str_detect(bcdc_resource_name, "LMID") ~ "Ministry of Advanced Education",
-                                   str_detect(bcdc_resource_name, "MCFD") ~ "Ministry of Children & Family Development",
-                                   str_detect(bcdc_resource_name, "BCHC") ~ "BC Housing",
-                                   str_detect(bcdc_resource_name, "AG") ~ "Attorney General's Office",
-                                   str_detect(bcdc_resource_name, "registration") ~ "Ministry of Health",
-                                   str_detect(bcdc_resource_name, "PHSA") ~ "Ministry of Health",
-                                   str_detect(bcdc_resource_name, "SES") ~ "Ministry of Education",
-                                   str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
-                                   str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
-                                              TRUE ~ NA_character_)) %>% 
-  select(data_provider, title, bcdc_resource_name, file_name, field_name,
-         identifier_classification, field_description, url)
+  ) %>%
+  mutate(
+    data_provider = case_when(
+      str_detect(bcdc_resource_name, "MOH") ~ "Ministry of Health",
+      str_detect(bcdc_resource_name, "Clients_case_metadata") ~ "Ministry of Health",
+      str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
+      # str_detect(bcdc_resource_name, "census geodata") ~ "Statistics Canada,
+      str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development and Poverty Reduction",
+      str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
+      str_detect(bcdc_resource_name, "LMID") ~ "Ministry of Advanced Education",
+      str_detect(bcdc_resource_name, "MCFD") ~ "Ministry of Children and Family Development",
+      str_detect(bcdc_resource_name, "BCHC") ~ "BC Housing",
+      str_detect(bcdc_resource_name, "AG") ~ "Attorney General's Office",
+      str_detect(bcdc_resource_name, "registration") ~ "Ministry of Health",
+      str_detect(bcdc_resource_name, "PHSA") ~ "Ministry of Health",
+      str_detect(bcdc_resource_name, "SES") ~ "Ministry of Education",
+      str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
+      str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
+      TRUE ~ NA_character_
+    ),
+    bcdc_record_url = str_sub(url, 1, 77)
+  )  %>%
+  select(
+    data_provider,
+    title,
+    bcdc_resource_name,
+    file_name,
+    field_name,
+    identifier_classification,
+    field_description,
+    bcdc_record_url
+  )
   
-
 ## save df to /data
 dir.create("data", showWarnings = FALSE)
 saveRDS(df_metadata, "data/df-metadata.rds")
