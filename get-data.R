@@ -33,11 +33,16 @@ df <- map2_dfr(resources_df$id,
               ~bcdc_get_data(record, .x,
                              col_types = readr::cols(.default = "c")) %>% 
                mutate(bcdc_resource_name = .y))
-df
+
+df2 <- df %>% 
+  left_join(resources_df, by = c("bcdc_resource_name" = "name")) %>% 
+  left_join(dip_records_df, by = c("package_id" = "id"))
+
+df2
 }
 
 ## test concatenate_all_record_resources()
-# concatenate_all_record_resources("3849cd71-3c04-4eea-a6f1-fb0012cde168")
+# concatenate_all_record_resources("9803cef9-0d7b-4f5c-bc39-91dca04c5654")
 
 
 ## grab concatenated metadata files for each dip record into a list
@@ -47,7 +52,7 @@ metadata_by_record <- map(dip_records_df$id,
 
 
 ## save list to /tmp
-# if (!dir.exists("tmp")) dir.create("tmp", showWarnings = FALSE)
+# dir.create("tmp", showWarnings = FALSE)
 # saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
@@ -76,10 +81,10 @@ metadata_by_record$`Metadata for Home and Community Care` <-
   mutate(`Identifier Classification` = case_when(is.na(`Identifier Classification`) ~ `Variable Classification`,
     TRUE ~ `Identifier Classification`)) %>% 
   select(-`Variable Classification`) %>% 
-  filter(!bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata
-NA", "MOH_HCCS_healthunit_ID2_metadata"))
+  filter(!bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata",
+                                    "MOH_HCCS_healthunit_ID2_metadata",
+                                    "MOH_HCCS_subsidycode_client_metadata"))
 
-metadata_by_record[[1]]
                
 ## concatenate metadata files into 1 file
 #functions to rename to one column name design
@@ -100,14 +105,15 @@ tidy_metadata <- function(x){
     rename_with(tidy_classification, .cols = matches("variable_classification")) %>% 
     rename_with(tidy_description, .cols = matches("field_description_and_notes")) %>% 
     select(
+      title,
       bcdc_resource_name,
       file_name,
       field_name,
       identifier_classification,
-      field_description
+      field_description,
+      url
     )
 }
-
 
 df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x)) 
 
@@ -115,7 +121,25 @@ tidy_metadata <- df_metadata %>%
   mutate(
     identifier_classification = str_replace(identifier_classification, "�", "-"),
     field_description = str_replace_all(field_description, "�", " ")
-  )
+  ) %>% 
+  mutate(data_provider = case_when(str_detect(bcdc_resource_name, "MOH") ~ "Ministry of Health",
+                                   str_detect(bcdc_resource_name, "Clients_case_metadata") ~ "Ministry of Health",
+                                   str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
+                                   # str_detect(bcdc_resource_name, "census geodata") ~ "Statistics Canada,
+                                   str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development & Poverty Reduction",
+                                   str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
+                                   str_detect(bcdc_resource_name, "LMID") ~ "Ministry of Advanced Education",
+                                   str_detect(bcdc_resource_name, "MCFD") ~ "Ministry of Children & Family Development",
+                                   str_detect(bcdc_resource_name, "BCHC") ~ "BC Housing",
+                                   str_detect(bcdc_resource_name, "AG") ~ "Attorney General's Office",
+                                   str_detect(bcdc_resource_name, "registration") ~ "Ministry of Health",
+                                   str_detect(bcdc_resource_name, "PHSA") ~ "Ministry of Health",
+                                   str_detect(bcdc_resource_name, "SES") ~ "Ministry of Education",
+                                   str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
+                                   str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
+                                              TRUE ~ NA_character_)) %>% 
+  select(data_provider, title, bcdc_resource_name, file_name, field_name,
+         identifier_classification, field_description, url)
   
 
 ## save df to /data
