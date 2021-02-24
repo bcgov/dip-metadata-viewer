@@ -109,7 +109,8 @@ reactable(
     url <- value
     htmltools::tags$a(href = url, as.character(value))
   })
-  )
+  ),
+  defaultPageSize = 100
 )
 ```
 
