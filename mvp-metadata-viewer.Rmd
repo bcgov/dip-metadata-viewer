@@ -3,8 +3,6 @@ title: "DIP Metadata"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
-    vertical_layout: fill
-    social: menu
     source_code: https://github.com/bcgov-dsp/dip-metadata-viewer
 ---
 
@@ -48,7 +46,7 @@ Column {data-width=200}
 ```{r}
   filter_checkbox(
     "data_provider",
-    label = "Data Provider",
+    label = "DIP Data Provider",
     sharedData = data,
     group = ~ data_provider
   )
@@ -69,7 +67,7 @@ Column {data-width=200}
   
   filter_select(
     id = "file_name",
-    label = "Metdata File Name",
+    label = "File Name",
     sharedData = data,
     group = ~ file_name
   )
@@ -97,6 +95,7 @@ Column {data-width=800}
 reactable(
   data,
   searchable = TRUE,
+  # filterable = TRUE,
   columns = list(
     data_provider = colDef(name = "DIP Data Provider"),
     title = colDef(name = "BCDC Record Name"),
