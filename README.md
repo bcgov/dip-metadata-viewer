@@ -1,15 +1,17 @@
-[![img](https://img.shields.io/badge/Lifecycle-Experimental-339999)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![img](https://img.shields.io/badge/Lifecycle-Maturing-007EC6)](https://github.com/bcgov/repomountie/blob/master/doc/lifecycle-badges.md)[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 
 ## dip-metadata-viewer
 
-An alpha web application for viewing and filtering metadata for data sets available through the [Data Innovation Program (DIP)](https://www2.gov.bc.ca/gov/content/data/about-data-management/data-innovation-program),  a data integration and analytics program for the Government of British Columbia. 
+The DIP Metadata Viewer is web-based, interactive table for viewing and filtering the metadata for data sets available through the [Data Innovation Program (DIP)](https://www2.gov.bc.ca/gov/content/data/about-data-management/data-innovation-program)&mdash;a data integration and analytics program for the Government of British Columbia. 
 
-The web app is built using the [{shiny} R package](https://shiny.rstudio.com/). All metadata is sourced from the [B.C. Data Catalogue[](https://catalogue.data.gov.bc.ca/group/data-innovation-program), provided under the [Access Only licence](https://www2.gov.bc.ca/gov/content?id=1AAACC9C65754E4D89A118B875E0FBDA).
+The dip-metadata-viewer is built using the [{flexdashboard}](https://rmarkdown.rstudio.com/flexdashboard/) and [{reactable}](https://glin.github.io/reactable/) R packages. All metadata is sourced from the [B.C. Data Catalogue](https://catalogue.data.gov.bc.ca/group/data-innovation-program), licensed [Access Only](https://www2.gov.bc.ca/gov/content?id=1AAACC9C65754E4D89A118B875E0FBDA), using the [{bcdata}](https://bcgov.github.io/bcdata/) R package.
+
 
 ### Getting Help or Reporting an Issue
 
 To report bugs/issues/feature requests, please file an [issue](https://github.com/bcgov/dip-metadata-viewer/issues/).
+
 
 ### How to Contribute
 
