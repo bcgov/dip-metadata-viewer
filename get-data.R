@@ -18,7 +18,7 @@ library(janitor)
 library(stringr)
 
 
-#dataframe of dip metadata records in the B.C. Data Catalogue
+## data frame of dip metadata records in the B.C. Data Catalogue
 dip_records_df <- bcdc_list_group_records("data-innovation-program") 
 
 
@@ -28,17 +28,17 @@ concatenate_all_record_resources <- function(record){
 resources_df <- bcdc_tidy_resources(record) %>% 
   filter(format == "csv")
 
-df <- map2_dfr(resources_df$id, 
+d <- map2_dfr(resources_df$id, 
                resources_df$name,
               ~bcdc_get_data(record, .x,
                              col_types = readr::cols(.default = "c")) %>% 
                mutate(bcdc_resource_name = .y))
 
-df2 <- df %>% 
+d2 <- d %>% 
   left_join(resources_df, by = c("bcdc_resource_name" = "name")) %>% 
   left_join(dip_records_df, by = c("package_id" = "id"))
 
-df2
+d2
 }
 
 ## test concatenate_all_record_resources()
@@ -60,7 +60,7 @@ metadata_by_record <- map(dip_records_df$id,
 ## Explore and tidy some of the metadata
 map(metadata_by_record, ~ colnames(.x))
 
-#temp clean-up of Metadata for Health Medical Services Plan (MSP) Payment Information File
+## Metadata for Health Medical Services Plan (MSP) Payment Information File
 metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Information File` <- 
   metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Information File` %>%
   rename(`File Name` = `MANDATORY MINIMUM FIELD METADATA COMPONENTS`,
@@ -69,13 +69,13 @@ metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Info
          `Field Description` = `ADDITIONAL INFORMATION`) %>% 
   slice(-1)
   
-#temp clean-up of Metadata for Income Bands by Postal Code                  
+## Metadata for Income Bands by Postal Code                  
 metadata_by_record$`Metadata for Income Bands by Postal Code` <- 
   metadata_by_record$`Metadata for Income Bands by Postal Code` %>%
   select(-"Variable Classification\npostal area", 
          -"Variable Classification\nplace | name | geo")
 
-#temp clean-up of Metadata for Home and Community Care                  
+## Metadata for Home and Community Care                  
 metadata_by_record$`Metadata for Home and Community Care` <- 
   metadata_by_record$`Metadata for Home and Community Care` %>%
   mutate(`Identifier Classification` = case_when(is.na(`Identifier Classification`) ~ `Variable Classification`,
@@ -86,8 +86,9 @@ metadata_by_record$`Metadata for Home and Community Care` <-
                                     "MOH_HCCS_subsidycode_client_metadata"))
 
                
-## concatenate metadata files into 1 file
-#functions to rename to one column name design
+## Concatenate metadata files into 1 file
+
+## functions to rename to a consistent-column-name design
 tidy_classification <- function(x){
   names(x)[names(x)=="variable_classification"] <- "identifier_classification"
 }
@@ -97,7 +98,7 @@ tidy_description <- function(x){
   }
   
 
-#function to tidy the dfs
+## function to tidy the dfs
 tidy_metadata <- function(x){
    
   x %>% 
@@ -117,6 +118,7 @@ tidy_metadata <- function(x){
 
 df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x))
 
+## Final tidying step
 tidy_metadata <- df_metadata %>%
   mutate(
     identifier_classification = str_replace(identifier_classification, "�", "-"),
@@ -154,7 +156,7 @@ tidy_metadata <- df_metadata %>%
     bcdc_record_url
   )
   
-## save df to /data
+## save tidy data frame to /data
 dir.create("data", showWarnings = FALSE)
 saveRDS(df_metadata, "data/df-metadata.rds")
 saveRDS(tidy_metadata, "data/tidy-metadata.rds")
