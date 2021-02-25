@@ -23,7 +23,6 @@ See the License for the specific language governing permissions and limitations 
 
 ```{r setup, include=FALSE}
 library(reactable)
-library(htmltools)
 library(crosstalk)
 
 tidy_metadata <- readRDS("data/tidy-metadata.rds")
