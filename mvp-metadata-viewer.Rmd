@@ -54,7 +54,7 @@ Column {data-width=200}
     id = "title",
     label = "BCDC Record Name",
     sharedData = data,
-    group = ~ bcdc_resource_name
+    group = ~ title
   )
   
    filter_select(
