@@ -76,6 +76,14 @@ metadata_by_record$`Metadata for Income Bands by Postal Code` <-
          -"Variable Classification\nplace | name | geo")
 
 ## Metadata for Home and Community Care                  
+extra_files <- metadata_by_record$`Metadata for Home and Community Care` %>%
+  filter(bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata",
+                                    "MOH_HCCS_healthunit_ID2_metadata",
+                                    "MOH_HCCS_subsidycode_client_metadata")) %>% 
+  group_by(bcdc_resource_name) %>% 
+  slice(1L) %>% 
+  select(-`Variable Classification`)
+
 metadata_by_record$`Metadata for Home and Community Care` <- 
   metadata_by_record$`Metadata for Home and Community Care` %>%
   mutate(`Identifier Classification` = case_when(is.na(`Identifier Classification`) ~ `Variable Classification`,
@@ -83,7 +91,8 @@ metadata_by_record$`Metadata for Home and Community Care` <-
   select(-`Variable Classification`) %>% 
   filter(!bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata",
                                     "MOH_HCCS_healthunit_ID2_metadata",
-                                    "MOH_HCCS_subsidycode_client_metadata"))
+                                    "MOH_HCCS_subsidycode_client_metadata")) %>% 
+  bind_rows(extra_files)
 
                
 ## Concatenate metadata files into 1 file
