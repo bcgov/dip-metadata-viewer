@@ -5,6 +5,6 @@
 /tmp
 /data
 .DS_Store
-*html
 *pdf
 ship.R
+README.html
