@@ -61,21 +61,32 @@ metadata_by_record <- map(dip_records_df$id,
 map(metadata_by_record, ~ colnames(.x))
 
 ## Metadata for Health Medical Services Plan (MSP) Payment Information File
+# extra header row in source csv - clean-up
 metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Information File` <- 
   metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Information File` %>%
   rename(`File Name` = `MANDATORY MINIMUM FIELD METADATA COMPONENTS`,
-         `Field Name` = X2, 
-         `Identifier Classification` = X3,  
+         `Field Name` = ...2, 
+         `Identifier Classification` = ...3,  
          `Field Description` = `ADDITIONAL INFORMATION`) %>% 
   slice(-1)
   
-## Metadata for Income Bands by Postal Code                  
-metadata_by_record$`Metadata for Income Bands by Postal Code` <- 
-  metadata_by_record$`Metadata for Income Bands by Postal Code` %>%
+## Metadata for Income Bands - Standard
+# pull out code table rows
+geo_class_file <- metadata_by_record$`Metadata for Income Bands - Standard` %>%
   select(-"Variable Classification\npostal area", 
-         -"Variable Classification\nplace | name | geo")
+         -"Variable Classification\nplace | name | geo") %>% 
+  filter(bcdc_resource_name == "DIP_Statscan_Income_GEO_Classification") %>% 
+  slice(1L)
 
-## Metadata for Home and Community Care                  
+metadata_by_record$`Metadata for Income Bands - Standard` <- 
+  metadata_by_record$`Metadata for Income Bands - Standard` %>%
+  select(-"Variable Classification\npostal area", 
+         -"Variable Classification\nplace | name | geo") %>% 
+  filter(bcdc_resource_name != "DIP_Statscan_Income_GEO_Classification") %>% 
+  bind_rows(geo_class_file)
+
+## Metadata for Home and Community Care  
+# pull out code table rows
 extra_files <- metadata_by_record$`Metadata for Home and Community Care` %>%
   filter(bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata",
                                     "MOH_HCCS_healthunit_ID2_metadata",
@@ -140,6 +151,7 @@ tidy_metadata <- df_metadata %>%
       str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
       # str_detect(bcdc_resource_name, "census geodata") ~ "Statistics Canada,
       str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development and Poverty Reduction",
+      str_detect(bcdc_resource_name, "MED") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "LMID") ~ "Ministry of Advanced Education",
       str_detect(bcdc_resource_name, "MCFD") ~ "Ministry of Children and Family Development",
@@ -150,6 +162,7 @@ tidy_metadata <- df_metadata %>%
       str_detect(bcdc_resource_name, "SES") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
+      str_detect(bcdc_resource_name, "ICBC") ~ "Insurance Corporation of British Columbia",
       TRUE ~ NA_character_
     ),
     bcdc_record_url = str_sub(url, 1, 77)

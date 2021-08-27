@@ -73,10 +73,6 @@ Column {data-width=200}
 ```
 
 
-<br/>
-<br/>
-
-
 **About**
 
 [Data Innovation Program (DIP)](https://www2.gov.bc.ca/gov/content?id=2F6E3BF426034EDBA62F3F016EE2313D) metadata are provided through the [B.C. Data Catalogue](https://catalogue.data.gov.bc.ca/group/data-innovation-program). This DIP metadata viewer is built with the [`flexdashboard` R package](https://rmarkdown.rstudio.com/flexdashboard/), sourcing the DIP metadata files from the B.C. Data Catalogue using the [`bcdata` R package](https://bcgov.github.io/bcdata/).
