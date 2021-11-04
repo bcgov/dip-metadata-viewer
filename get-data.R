@@ -136,20 +136,39 @@ tidy_metadata <- function(x){
     )
 }
 
+# tidy_metadata(metadata_by_record[[2]])
+
+## map over metadata records and tidy the dfs
 df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x))
 
+
+## Collapse the code table rows to 1 per resource (since the attributes are all NA)
+code_files <- df_metadata %>%
+  filter(is.na(field_name)) %>%
+  group_by(bcdc_resource_name) %>% 
+  slice(1L)
+
+code_names <- code_files %>% pull("bcdc_resource_name")
+
+df_metadata_reduced <-
+  df_metadata  %>%
+  filter(!bcdc_resource_name %in% code_names) %>%
+  bind_rows(code_files)
+
+
 ## Final tidying step
-tidy_metadata <- df_metadata %>%
+tidy_metadata <- df_metadata_reduced %>%
   mutate(
     identifier_classification = str_replace(identifier_classification, "�", "-"),
     field_description = str_replace_all(field_description, "�", " ")
   ) %>%
   mutate(
     data_provider = case_when(
+      str_detect(bcdc_resource_name, "AG") ~ "Ministry of Attorney General",
       str_detect(bcdc_resource_name, "MOH") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "Clients_case_metadata") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
-      # str_detect(bcdc_resource_name, "census geodata") ~ "Statistics Canada,
+      str_detect(bcdc_resource_name, "IncomeBands") ~ "Statistics Canada",
       str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development and Poverty Reduction",
       str_detect(bcdc_resource_name, "MED") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
