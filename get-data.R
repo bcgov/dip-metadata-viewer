@@ -182,6 +182,7 @@ tidy_metadata <- df_metadata_reduced %>%
       str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
       str_detect(bcdc_resource_name, "ICBC") ~ "Insurance Corporation of British Columbia",
+      str_detect(bcdc_resource_name, "MUNI") ~ "Ministry of Municipal Affairs",
       TRUE ~ NA_character_
     ),
     bcdc_record_url = str_sub(url, 1, 77)
