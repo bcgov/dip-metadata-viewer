@@ -21,15 +21,17 @@ library(stringr)
 ## function to concatenate all metadata resources (files) for one bcdc record 
 concatenate_all_record_resources <- function(record){
   
-record_title <- bcdc_get_record(record) %>%
+bcdc_record <- bcdc_get_record(record)
+
+record_title <- bcdc_record %>%
   pluck("title")
   
-resources_df <- bcdc_tidy_resources(record) %>% 
+resources_df <- bcdc_tidy_resources(bcdc_record) %>% 
   filter(format == "csv")
 
 d <- map2_dfr(resources_df$id, 
                resources_df$name,
-              ~bcdc_get_data(record, .x,
+              ~bcdc_get_data(bcdc_record, .x,
                              col_types = readr::cols(.default = "c")) %>% 
                remove_empty(which = c("rows", "cols")) %>% 
                mutate(bcdc_resource_name = .y,
