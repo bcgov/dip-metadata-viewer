@@ -18,34 +18,40 @@ library(janitor)
 library(stringr)
 
 
-## data frame of dip metadata records in the B.C. Data Catalogue
-dip_records_df <- bcdc_list_group_records("data-innovation-program") 
-
-
-## function to concatenate all metadata resources (files) for one record 
+## function to concatenate all metadata resources (files) for one bcdc record 
 concatenate_all_record_resources <- function(record){
   
-resources_df <- bcdc_tidy_resources(record) %>% 
+bcdc_record <- bcdc_get_record(record)
+
+record_title <- bcdc_record %>%
+  pluck("title")
+  
+resources_df <- bcdc_tidy_resources(bcdc_record) %>% 
   filter(format == "csv")
 
 d <- map2_dfr(resources_df$id, 
                resources_df$name,
-              ~bcdc_get_data(record, .x,
+              ~bcdc_get_data(bcdc_record, .x,
                              col_types = readr::cols(.default = "c")) %>% 
-               mutate(bcdc_resource_name = .y))
+               remove_empty(which = c("rows", "cols")) %>% 
+               mutate(bcdc_resource_name = .y,
+                      title = record_title))
 
 d2 <- d %>% 
-  left_join(resources_df, by = c("bcdc_resource_name" = "name")) %>% 
-  left_join(dip_records_df, by = c("package_id" = "id"))
+  left_join(resources_df, by = c("bcdc_resource_name" = "name"))
 
 d2
 }
 
-## test concatenate_all_record_resources()
-# concatenate_all_record_resources("9803cef9-0d7b-4f5c-bc39-91dca04c5654")
+## test concatenate_all_record_resources() on one record
+# concatenate_all_record_resources("1cfcec36-6252-4177-9bfd-b5820e392ca7")
 
 
-## grab concatenated metadata files for each dip record into a list
+## data frame of all dip metadata records in the B.C. Data Catalogue
+dip_records_df <- bcdc_list_group_records("data-innovation-program")
+
+
+## grab and concatenate metadata files for each dip record into a list
 metadata_by_record <- map(dip_records_df$id,
                           ~ concatenate_all_record_resources(.x))  %>%
   setNames(dip_records_df$title)
@@ -57,55 +63,52 @@ metadata_by_record <- map(dip_records_df$id,
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
 
-## Explore and tidy some of the metadata
+## Explore metadata column names for each DIP record
 map(metadata_by_record, ~ colnames(.x))
+# metadata_by_record[[3]]
+
+
+## Tidying a Few Records/Resources
 
 ## Metadata for Health Medical Services Plan (MSP) Payment Information File
-# extra header row in source csv - clean-up
-metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Information File` <- 
-  metadata_by_record$`Metadata for Health Medical Services Plan (MSP) Payment Information File` %>%
+# extra header row in source csv
+metadata_by_record$`Metadata for Medical Services Plan (MSP) Payment Information File` <- 
+  metadata_by_record$`Metadata for Medical Services Plan (MSP) Payment Information File` %>%
   rename(`File Name` = `MANDATORY MINIMUM FIELD METADATA COMPONENTS`,
          `Field Name` = ...2, 
          `Identifier Classification` = ...3,  
          `Field Description` = `ADDITIONAL INFORMATION`) %>% 
   slice(-1)
-  
-## Metadata for Income Bands - Standard
-# pull out code table rows
-geo_class_file <- metadata_by_record$`Metadata for Income Bands - Standard` %>%
-  select(-"Variable Classification\npostal area", 
-         -"Variable Classification\nplace | name | geo") %>% 
-  filter(bcdc_resource_name == "DIP_Statscan_Income_GEO_Classification") %>% 
-  slice(1L)
 
+## Metadata for Income Bands - Standard
+# duplicate column names that make it difficult to auto tidy
 metadata_by_record$`Metadata for Income Bands - Standard` <- 
   metadata_by_record$`Metadata for Income Bands - Standard` %>%
   select(-"Variable Classification\npostal area", 
-         -"Variable Classification\nplace | name | geo") %>% 
-  filter(bcdc_resource_name != "DIP_Statscan_Income_GEO_Classification") %>% 
-  bind_rows(geo_class_file)
+         -"Variable Classification\nplace | name | geo") 
+
+## Metadata for Income Bands - Custom
+# duplicate column names that make it difficult to auto tidy
+metadata_by_record$`Metadata for Income Bands - Custom` <- 
+  metadata_by_record$`Metadata for Income Bands - Custom` %>%
+  select(-"Variable Classification\npostal area", 
+         -"Variable Classification\nplace | name | geo")
 
 ## Metadata for Home and Community Care  
-# pull out code table rows
-extra_files <- metadata_by_record$`Metadata for Home and Community Care` %>%
-  filter(bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata",
-                                    "MOH_HCCS_healthunit_ID2_metadata",
-                                    "MOH_HCCS_subsidycode_client_metadata")) %>% 
-  group_by(bcdc_resource_name) %>% 
-  slice(1L) %>% 
-  select(-`Variable Classification`)
-
+# concatenated resources contain both classification variable names
 metadata_by_record$`Metadata for Home and Community Care` <- 
   metadata_by_record$`Metadata for Home and Community Care` %>%
   mutate(`Identifier Classification` = case_when(is.na(`Identifier Classification`) ~ `Variable Classification`,
     TRUE ~ `Identifier Classification`)) %>% 
-  select(-`Variable Classification`) %>% 
-  filter(!bcdc_resource_name %in% c("MOH_HCCS_healthunit_ID1_suboffice_metadata",
-                                    "MOH_HCCS_healthunit_ID2_metadata",
-                                    "MOH_HCCS_subsidycode_client_metadata")) %>% 
-  bind_rows(extra_files)
+  select(-`Variable Classification`) 
 
-               
+## Metadata for Health - National Ambulatory Care Reporting System (NACRS)
+# unique classification column name
+metadata_by_record$`Metadata for Health - National Ambulatory Care Reporting System (NACRS)` <-
+  metadata_by_record$`Metadata for Health - National Ambulatory Care Reporting System (NACRS)` %>%
+  rename("Identifier Classification" = "V03 Identifier Classification")
+
+
 ## Concatenate metadata files into 1 file
 
 ## functions to rename to a consistent-column-name design
@@ -117,7 +120,6 @@ tidy_description <- function(x){
   names(x)[names(x)=="field_description_and_notes"] <- "field_description"
   }
   
-
 ## function to tidy the dfs
 tidy_metadata <- function(x){
    
@@ -136,20 +138,39 @@ tidy_metadata <- function(x){
     )
 }
 
+# tidy_metadata(metadata_by_record[[2]])
+
+## map over metadata records and tidy the dfs
 df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x))
 
+
+## Collapse the code table rows to 1 per resource (since the attributes are all NA)
+code_files <- df_metadata %>%
+  filter(is.na(field_name)) %>%
+  group_by(bcdc_resource_name) %>% 
+  slice(1L)
+
+code_names <- code_files %>% pull("bcdc_resource_name")
+
+df_metadata_reduced <-
+  df_metadata  %>%
+  filter(!bcdc_resource_name %in% code_names) %>%
+  bind_rows(code_files)
+
+
 ## Final tidying step
-tidy_metadata <- df_metadata %>%
+tidy_metadata <- df_metadata_reduced %>%
   mutate(
     identifier_classification = str_replace(identifier_classification, "�", "-"),
     field_description = str_replace_all(field_description, "�", " ")
   ) %>%
   mutate(
     data_provider = case_when(
+      str_detect(bcdc_resource_name, "AG") ~ "Ministry of Attorney General",
       str_detect(bcdc_resource_name, "MOH") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "Clients_case_metadata") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
-      # str_detect(bcdc_resource_name, "census geodata") ~ "Statistics Canada,
+      str_detect(bcdc_resource_name, "IncomeBands") ~ "Statistics Canada",
       str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development and Poverty Reduction",
       str_detect(bcdc_resource_name, "MED") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
@@ -163,6 +184,7 @@ tidy_metadata <- df_metadata %>%
       str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
       str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
       str_detect(bcdc_resource_name, "ICBC") ~ "Insurance Corporation of British Columbia",
+      str_detect(bcdc_resource_name, "MUNI") ~ "Ministry of Municipal Affairs",
       TRUE ~ NA_character_
     ),
     bcdc_record_url = str_sub(url, 1, 77)
