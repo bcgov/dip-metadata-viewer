@@ -1,60 +1,89 @@
 # Copyright 2021 Province of British Columbia
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
 
-library(bcdata)
+library(bcdata) #using dev version of {bcdata} remotes::install_github("bcgov/bcdata")
 library(dplyr)
 library(purrr)
 library(janitor)
 library(stringr)
+library(tidyr)
 
 
-## function to concatenate all metadata resources (files) for one bcdc record 
-concatenate_all_record_resources <- function(record){
+## function to concatenate all metadata resources (files) for one bcdc record
+concatenate_all_record_resources <- function(record) {
+  bcdc_record <- bcdc_get_record(record)
   
-bcdc_record <- bcdc_get_record(record)
-
-record_title <- bcdc_record %>%
-  pluck("title")
+  record_title <- bcdc_record %>%
+    pluck("title")
   
-resources_df <- bcdc_tidy_resources(bcdc_record) %>% 
-  filter(format == "csv")
-
-d <- map2_dfr(resources_df$id, 
-               resources_df$name,
-              ~bcdc_get_data(bcdc_record, .x,
-                             col_types = readr::cols(.default = "c")) %>% 
-               remove_empty(which = c("rows", "cols")) %>% 
-               mutate(bcdc_resource_name = .y,
-                      title = record_title))
-
-d2 <- d %>% 
-  left_join(resources_df, by = c("bcdc_resource_name" = "name"))
-
-d2
+  resources_df <- bcdc_tidy_resources(bcdc_record) |>
+    filter(ext %in% c("csv", "json")) |>
+    rename(resource_format = format)
+  
+  d <- map2_dfr(resources_df$id,
+                resources_df$name,
+                if ("json" %in% resources_df$ext) {
+                  ~ bcdc_get_data(bcdc_record, .x, simplifyVector = TRUE) |>
+                    data.frame() |>
+                    rename_with( ~ gsub("fields.", "", .x),
+                                 .cols = starts_with("fields")) |>
+                    # unnest("fields.constraints") |>
+                    # select(-missingValues) |>
+                    # mutate(enum = case_when(as.character(enum) == "NULL" ~ NA,
+                    #                         .default = as.character(enum))) |>
+                    mutate(bcdc_resource_name = .y,
+                           title = record_title)
+                  
+                } else
+                {
+                  ~ bcdc_get_data(bcdc_record, .x,
+                                  col_types = readr::cols(.default = "c")) %>%
+                    remove_empty(which = c("rows", "cols")) %>%
+                    mutate(bcdc_resource_name = .y,
+                           title = record_title)
+                })
+  
+  d2 <- d |>
+    left_join(resources_df, by = c("bcdc_resource_name" = "name"))
+  
+  d2
 }
 
 ## test concatenate_all_record_resources() on one record
-# concatenate_all_record_resources("1cfcec36-6252-4177-9bfd-b5820e392ca7")
+concatenate_all_record_resources("c706d7b2-4647-4657-8fba-62295bb93b37")
+# record <- "36ad8c2b-a884-44b6-b846-d230673142f2" #csv
+# record <- "c706d7b2-4647-4657-8fba-62295bb93b37" #json
 
 
 ## data frame of all dip metadata records in the B.C. Data Catalogue
-dip_records_df <- bcdc_list_group_records("data-innovation-program")
+# dip_records_df <- bcdc_list_group_records("data-innovation-program")
+dip_records <-
+  bcdc_search(organization = "data-innovation-program-dip")
 
+# rm "extras" sub-element as not all elements have it
+dip_records_no_extras <-
+  lapply(dip_records, function(x)
+    x[names(x) != "extras"])
+dip_records_df <-
+  data.frame(purrr::reduce(dip_records_no_extras, rbind))
+
+dip_records_active <- dip_records_df |>
+  filter(!str_detect(name, "superseded")) #remove deprecated records
 
 ## grab and concatenate metadata files for each dip record into a list
-metadata_by_record <- map(dip_records_df$id,
+metadata_by_record <- map(dip_records_active$id,
                           ~ concatenate_all_record_resources(.x))  %>%
-  setNames(dip_records_df$title)
+  setNames(dip_records_active$title)
 
 
 ## save list to /tmp
@@ -65,7 +94,7 @@ metadata_by_record <- map(dip_records_df$id,
 
 ## Explore metadata column names for each DIP record
 map(metadata_by_record, ~ colnames(.x))
-# metadata_by_record[[3]]
+metadata_by_record[[1]]
 
 
 ## Tidying a Few Records/Resources
