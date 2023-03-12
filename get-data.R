@@ -10,14 +10,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
-
-library(bcdata) #using dev version of {bcdata} remotes::install_github("bcgov/bcdata")
+library(bcdata) #uses dev version of {bcdata} remotes::install_github("bcgov/bcdata")
 library(dplyr)
 library(purrr)
 library(janitor)
 library(stringr)
 library(tidyr)
-
 
 ## function to concatenate all metadata resources (files) for one bcdc record
 concatenate_all_record_resources <- function(record) {
@@ -30,6 +28,8 @@ concatenate_all_record_resources <- function(record) {
     filter(ext %in% c("csv", "json")) |>
     rename(resource_format = format)
   
+  ## this fxn is fragile, it assumes either only json or only csv in resources_df
+  ## it will bork if both ext are used in a single DIP record
   d <- map2_dfr(resources_df$id,
                 resources_df$name,
                 if ("json" %in% resources_df$ext) {
@@ -37,10 +37,7 @@ concatenate_all_record_resources <- function(record) {
                     data.frame() |>
                     rename_with( ~ gsub("fields.", "", .x),
                                  .cols = starts_with("fields")) |>
-                    # unnest("fields.constraints") |>
-                    # select(-missingValues) |>
-                    # mutate(enum = case_when(as.character(enum) == "NULL" ~ NA,
-                    #                         .default = as.character(enum))) |>
+                    select(-any_of(c("missingValues", "constraints"))) |> 
                     mutate(bcdc_resource_name = .y,
                            title = record_title)
                   
@@ -60,10 +57,9 @@ concatenate_all_record_resources <- function(record) {
 }
 
 ## test concatenate_all_record_resources() on one record
-concatenate_all_record_resources("c706d7b2-4647-4657-8fba-62295bb93b37")
+# concatenate_all_record_resources("184b49e0-8e60-4e1b-9886-854db71c1a0e")
 # record <- "36ad8c2b-a884-44b6-b846-d230673142f2" #csv
 # record <- "c706d7b2-4647-4657-8fba-62295bb93b37" #json
-
 
 ## data frame of all dip metadata records in the B.C. Data Catalogue
 # dip_records_df <- bcdc_list_group_records("data-innovation-program")
@@ -74,6 +70,7 @@ dip_records <-
 dip_records_no_extras <-
   lapply(dip_records, function(x)
     x[names(x) != "extras"])
+
 dip_records_df <-
   data.frame(purrr::reduce(dip_records_no_extras, rbind))
 
@@ -82,32 +79,19 @@ dip_records_active <- dip_records_df |>
 
 ## grab and concatenate metadata files for each dip record into a list
 metadata_by_record <- map(dip_records_active$id,
-                          ~ concatenate_all_record_resources(.x))  %>%
+                          ~ concatenate_all_record_resources(.x)) |> 
   setNames(dip_records_active$title)
-
 
 ## save list to /tmp
 # dir.create("tmp", showWarnings = FALSE)
 # saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
-
 ## Explore metadata column names for each DIP record
 map(metadata_by_record, ~ colnames(.x))
 metadata_by_record[[1]]
 
-
 ## Tidying a Few Records/Resources
-
-## Metadata for Health Medical Services Plan (MSP) Payment Information File
-# extra header row in source csv
-metadata_by_record$`Metadata for Medical Services Plan (MSP) Payment Information File` <- 
-  metadata_by_record$`Metadata for Medical Services Plan (MSP) Payment Information File` %>%
-  rename(`File Name` = `MANDATORY MINIMUM FIELD METADATA COMPONENTS`,
-         `Field Name` = ...2, 
-         `Identifier Classification` = ...3,  
-         `Field Description` = `ADDITIONAL INFORMATION`) %>% 
-  slice(-1)
 
 ## Metadata for Income Bands - Standard
 # duplicate column names that make it difficult to auto tidy
@@ -116,29 +100,8 @@ metadata_by_record$`Metadata for Income Bands - Standard` <-
   select(-"Variable Classification\npostal area", 
          -"Variable Classification\nplace | name | geo") 
 
-## Metadata for Income Bands - Custom
-# duplicate column names that make it difficult to auto tidy
-metadata_by_record$`Metadata for Income Bands - Custom` <- 
-  metadata_by_record$`Metadata for Income Bands - Custom` %>%
-  select(-"Variable Classification\npostal area", 
-         -"Variable Classification\nplace | name | geo")
 
-## Metadata for Home and Community Care  
-# concatenated resources contain both classification variable names
-metadata_by_record$`Metadata for Home and Community Care` <- 
-  metadata_by_record$`Metadata for Home and Community Care` %>%
-  mutate(`Identifier Classification` = case_when(is.na(`Identifier Classification`) ~ `Variable Classification`,
-    TRUE ~ `Identifier Classification`)) %>% 
-  select(-`Variable Classification`) 
-
-## Metadata for Health - National Ambulatory Care Reporting System (NACRS)
-# unique classification column name
-metadata_by_record$`Metadata for Health - National Ambulatory Care Reporting System (NACRS)` <-
-  metadata_by_record$`Metadata for Health - National Ambulatory Care Reporting System (NACRS)` %>%
-  rename("Identifier Classification" = "V03 Identifier Classification")
-
-
-## Concatenate metadata files into 1 file
+## Concatenate CSV metadata files into 1 file
 
 ## functions to rename to a consistent-column-name design
 tidy_classification <- function(x){
