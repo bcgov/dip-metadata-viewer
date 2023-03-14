@@ -24,31 +24,29 @@ concatenate_all_record_resources <- function(record) {
   record_title <- bcdc_record %>%
     pluck("title")
   
-  resources_df <- bcdc_tidy_resources(bcdc_record) |>
-    filter(ext %in% c("csv", "json")) |>
-    rename(resource_format = format)
+  resources_df <- bcdc_tidy_resources(bcdc_record)
   
-  ## this fxn is fragile, it assumes either only json or only csv in resources_df
-  ## it will bork if both ext are used in a single DIP record
   d <- map2_dfr(resources_df$id,
                 resources_df$name,
-                if ("json" %in% resources_df$ext) {
-                  ~ bcdc_get_data(bcdc_record, .x, simplifyVector = TRUE) |>
+                ~ if (resources_df[resources_df$id == .x, "ext"] == "json") {
+                  bcdc_get_data(bcdc_record, .x, simplifyVector = TRUE) |>
                     data.frame() |>
-                    rename_with( ~ gsub("fields.", "", .x),
-                                 .cols = starts_with("fields")) |>
-                    select(-any_of(c("missingValues", "constraints"))) |> 
+                    rename_with(~ gsub("fields.", "", .x),
+                                .cols = starts_with("fields")) |>
+                    select(-any_of(c("missingValues", "constraints"))) |>
                     mutate(bcdc_resource_name = .y,
                            title = record_title)
                   
-                } else
+                } else if (resources_df[resources_df$id == .x, "ext"] == "csv")
                 {
-                  ~ bcdc_get_data(bcdc_record, .x,
-                                  col_types = readr::cols(.default = "c")) %>%
+                  bcdc_get_data(bcdc_record, .x,
+                                col_types = readr::cols(.default = "c")) %>%
                     remove_empty(which = c("rows", "cols")) %>%
                     mutate(bcdc_resource_name = .y,
                            title = record_title)
-                })
+                }
+                else
+                  (message("Sorry, this resource will not be read since it is not CSV or JSON-formatted")))
   
   d2 <- d |>
     left_join(resources_df, by = c("bcdc_resource_name" = "name"))
@@ -57,9 +55,9 @@ concatenate_all_record_resources <- function(record) {
 }
 
 ## test concatenate_all_record_resources() on one record
-# concatenate_all_record_resources("184b49e0-8e60-4e1b-9886-854db71c1a0e")
-# record <- "36ad8c2b-a884-44b6-b846-d230673142f2" #csv
-# record <- "c706d7b2-4647-4657-8fba-62295bb93b37" #json
+# concatenate_all_record_resources("184b49e0-8e60-4e1b-9886-854db71c1a0e") #json
+# concatenate_all_record_resources("36ad8c2b-a884-44b6-b846-d230673142f2") #csv
+# concatenate_all_record_resources("94b68713-d696-4749-8cc9-bf63ffa09084") #csv+pdf
 
 ## data frame of all dip metadata records in the B.C. Data Catalogue
 # dip_records_df <- bcdc_list_group_records("data-innovation-program")
@@ -79,7 +77,7 @@ dip_records_active <- dip_records_df |>
 
 ## grab and concatenate metadata files for each dip record into a list
 metadata_by_record <- map(dip_records_active$id,
-                          ~ concatenate_all_record_resources(.x)) |> 
+                          ~ concatenate_all_record_resources(.x)) |>
   setNames(dip_records_active$title)
 
 ## save list to /tmp
@@ -90,6 +88,8 @@ metadata_by_record <- map(dip_records_active$id,
 ## Explore metadata column names for each DIP record
 map(metadata_by_record, ~ colnames(.x))
 metadata_by_record[[1]]
+csv <- metadata_by_record[["Metadata for Mental Health Services"]]
+json <- metadata_by_record[["Metadata for Child and Youth Mental Health - E02"]]
 
 ## Tidying a Few Records/Resources
 
@@ -122,7 +122,7 @@ tidy_metadata <- function(x){
     select(
       title,
       bcdc_resource_name,
-      file_name,
+      file_name, #drop this
       field_name,
       identifier_classification,
       field_description,
