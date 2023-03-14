@@ -85,6 +85,32 @@ metadata_by_record <- map(dip_records_active$id,
 # saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
+
+## Tidy JSON API elements
+
+json_metdata_list <- metadata_by_record |>
+  keep( ~ ("json" %in% .$ext))
+
+tidy_json_metadata <- function(x) {
+  x |>
+    select(any_of(
+      c(
+        "title",
+        "bcdc_resource_name",
+        "name",
+        "var_class",
+        "type",
+        "description",
+        "url"
+      )
+    ))
+}
+
+## map over json API metadata records
+df_metadata_json <- map_dfr(json_metdata_list, ~ tidy_json_metadata(.x))
+
+## Tidy CSV API elements
+
 ## Explore metadata column names for each DIP record
 map(metadata_by_record, ~ colnames(.x))
 metadata_by_record[[1]]
@@ -92,6 +118,11 @@ csv <- metadata_by_record[["Metadata for Mental Health Services"]]
 json <- metadata_by_record[["Metadata for Child and Youth Mental Health - E02"]]
 
 ## Tidying a Few Records/Resources
+
+csv_list <- metadata_by_record |> 
+  keep(~("csv" %in% .$ext))
+
+
 
 ## Metadata for Income Bands - Standard
 # duplicate column names that make it difficult to auto tidy
