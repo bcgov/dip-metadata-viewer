@@ -19,12 +19,13 @@ library(tidyr)
 
 ## function to concatenate all metadata resources (files) for one bcdc record
 concatenate_all_record_resources <- function(record) {
-  bcdc_record <- bcdc_get_record(record)
+  bcdc_record <- bcdc_get_record(record) 
   
   record_title <- bcdc_record %>%
     pluck("title")
   
-  resources_df <- bcdc_tidy_resources(bcdc_record)
+  resources_df <- bcdc_tidy_resources(bcdc_record) |> 
+    rename("resource_format" = "format")
   
   d <- map2_dfr(resources_df$id,
                 resources_df$name,
@@ -85,11 +86,17 @@ metadata_by_record <- map(dip_records_active$id,
 # saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
+## Explore metadata column names for each DIP record
+map(metadata_by_record, ~ colnames(.x))
+# metadata_by_record[[1]]
+
 
 ## Tidy JSON API elements
-
-json_metdata_list <- metadata_by_record |>
+json_metadata_list <- metadata_by_record |>
   keep( ~ ("json" %in% .$ext))
+
+map(json_metadata_list, ~ colnames(.x))
+# json_metadata_list[[1]]
 
 tidy_json_metadata <- function(x) {
   x |>
@@ -106,87 +113,56 @@ tidy_json_metadata <- function(x) {
     ))
 }
 
-## map over json API metadata records
-df_metadata_json <- map_dfr(json_metdata_list, ~ tidy_json_metadata(.x))
+# map over json API metadata records
+df_metadata_json <- map_dfr(json_metadata_list,
+                            ~ tidy_json_metadata(.x))
 
 ## Tidy CSV API elements
-
-## Explore metadata column names for each DIP record
-map(metadata_by_record, ~ colnames(.x))
-metadata_by_record[[1]]
-csv <- metadata_by_record[["Metadata for Mental Health Services"]]
-json <- metadata_by_record[["Metadata for Child and Youth Mental Health - E02"]]
-
-## Tidying a Few Records/Resources
-
-csv_list <- metadata_by_record |> 
+csv_metadata_list <- metadata_by_record |> 
   keep(~("csv" %in% .$ext))
 
-
-
-## Metadata for Income Bands - Standard
-# duplicate column names that make it difficult to auto tidy
-metadata_by_record$`Metadata for Income Bands - Standard` <- 
-  metadata_by_record$`Metadata for Income Bands - Standard` %>%
-  select(-"Variable Classification\npostal area", 
-         -"Variable Classification\nplace | name | geo") 
-
-
-## Concatenate CSV metadata files into 1 file
-
-## functions to rename to a consistent-column-name design
-tidy_classification <- function(x){
-  names(x)[names(x)=="variable_classification"] <- "identifier_classification"
+tidy_csv_metadata <- function(x) {
+  x |>
+    clean_names() |> 
+    select(any_of(
+      c(
+        "title",
+        "bcdc_resource_name",
+        "name" = "field_name",
+        "var_class" = "variable_classification",
+        "var_class" = "identifier_classification",
+        "type" = "field_type",
+        "description" = "field_description",
+        "description" = "field_description_and_notes",
+        "url"
+      )
+    ))
 }
 
-tidy_description <- function(x){
-  names(x)[names(x)=="field_description_and_notes"] <- "field_description"
-  }
-  
-## function to tidy the dfs
-tidy_metadata <- function(x){
-   
-  x %>% 
-    clean_names() %>%
-    rename_with(tidy_classification, .cols = matches("variable_classification")) %>% 
-    rename_with(tidy_description, .cols = matches("field_description_and_notes")) %>% 
-    select(
-      title,
-      bcdc_resource_name,
-      file_name, #drop this
-      field_name,
-      identifier_classification,
-      field_description,
-      url
-    )
-}
+# map over csv API metadata records
+df_metadata_csv <- map_dfr(csv_metadata_list,
+                            ~ tidy_csv_metadata(.x))
 
-# tidy_metadata(metadata_by_record[[2]])
-
-## map over metadata records and tidy the dfs
-df_metadata <- map_dfr(metadata_by_record, ~ tidy_metadata(.x))
-
-
-## Collapse the code table rows to 1 per resource (since the attributes are all NA)
-code_files <- df_metadata %>%
-  filter(is.na(field_name)) %>%
-  group_by(bcdc_resource_name) %>% 
+## Collapse the csv code table rows to 1 per resource (since the attributes are all NA)
+code_files <- df_metadata_csv |> 
+  filter(is.na(name)) |> 
+  group_by(bcdc_resource_name) |> 
   slice(1L)
 
-code_names <- code_files %>% pull("bcdc_resource_name")
+code_names <- code_files |>  pull("bcdc_resource_name")
 
-df_metadata_reduced <-
-  df_metadata  %>%
-  filter(!bcdc_resource_name %in% code_names) %>%
+df_metadata_csv_reduced <-
+  df_metadata_csv  |> 
+  filter(!bcdc_resource_name %in% code_names) |> 
   bind_rows(code_files)
 
-
 ## Final tidying step
-tidy_metadata <- df_metadata_reduced %>%
+tidy_metadata <- df_metadata_csv_reduced |> 
+  bind_rows(df_metadata_json) |> 
   mutate(
-    identifier_classification = str_replace(identifier_classification, "�", "-"),
-    field_description = str_replace_all(field_description, "�", " ")
-  ) %>%
+    var_class = str_replace(var_class, "�", "-"),
+    description = str_replace_all(description, "�", " ")
+  ) |> 
   mutate(
     data_provider = case_when(
       str_detect(bcdc_resource_name, "AG") ~ "Ministry of Attorney General",
@@ -197,6 +173,7 @@ tidy_metadata <- df_metadata_reduced %>%
       str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development and Poverty Reduction",
       str_detect(bcdc_resource_name, "MED") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
+      str_detect(bcdc_resource_name, "HELP") ~ "Ministry of Education",
       str_detect(bcdc_resource_name, "LMID") ~ "Ministry of Advanced Education",
       str_detect(bcdc_resource_name, "MCFD") ~ "Ministry of Children and Family Development",
       str_detect(bcdc_resource_name, "BCHC") ~ "BC Housing",
@@ -211,15 +188,15 @@ tidy_metadata <- df_metadata_reduced %>%
       TRUE ~ NA_character_
     ),
     bcdc_record_url = str_sub(url, 1, 77)
-  )  %>%
+  )  |> 
   select(
     data_provider,
     title,
     bcdc_resource_name,
-    file_name,
-    field_name,
-    identifier_classification,
-    field_description,
+    name,
+    var_class,
+    type,
+    description,
     bcdc_record_url
   )
   
@@ -227,6 +204,4 @@ tidy_metadata <- df_metadata_reduced %>%
 dir.create("data", showWarnings = FALSE)
 saveRDS(df_metadata, "data/df-metadata.rds")
 saveRDS(tidy_metadata, "data/tidy-metadata.rds")
-
-
 
