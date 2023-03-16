@@ -115,6 +115,8 @@ df_metadata_json <- map_dfr(json_metadata_list,
 csv_metadata_list <- metadata_by_record |> 
   keep(~("csv" %in% .$ext))
 
+map(csv_metadata_list, ~ colnames(.x))
+
 tidy_csv_metadata <- function(x) {
   x |>
     clean_names() |> 
