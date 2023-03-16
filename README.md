@@ -7,6 +7,19 @@ The DIP Metadata Viewer is web-based, interactive table for viewing and filterin
 
 The dip-metadata-viewer is built using the [{flexdashboard}](https://rmarkdown.rstudio.com/flexdashboard/), [{crosstalk}](https://rstudio.github.io/crosstalk/index.html)  and [{reactable}](https://glin.github.io/reactable/) R packages. All metadata is sourced from the [B.C. Data Catalogue](https://catalogue.data.gov.bc.ca/group/data-innovation-program) using the [{bcdata}](https://bcgov.github.io/bcdata/) R package. All the data described in the dip-metadata-viewer is licensed [Access Only](https://www2.gov.bc.ca/gov/content?id=1AAACC9C65754E4D89A118B875E0FBDA) and is only available through the [Data Innovation Program](https://www2.gov.bc.ca/gov/content/data/about-data-management/data-innovation-program)&mdash;the data is _not_ downloadable from the B.C. Data Catalogue.
 
+### Code
+There are two scripts that are required to generate the viewer, they need to be run in order:
+
+- `get-data.R`
+- `dip-metadata-viewer.Rmd`
+
+All the required packages can be installed from CRAN using `install.packages()`, but you will need to install the development version of [bcdata](https://github.com/bcgov/bcdata):
+
+
+```r
+install.packages("remotes") # If you don't already have it installed
+remotes::install_github("bcgov/bcdata")
+```
 
 ### Getting Help or Reporting an Issue
 
