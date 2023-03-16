@@ -43,13 +43,6 @@ Column {data-width=200}
 <br/>
 
 ```{r}
-  filter_checkbox(
-    "data_provider",
-    label = "DIP Data Provider",
-    sharedData = data,
-    group = ~ data_provider
-  )
-  
   filter_select(
     id = "title",
     label = "BCDC Record Name",
@@ -62,13 +55,6 @@ Column {data-width=200}
     label = "BCDC Resource Name",
     sharedData = data,
     group = ~ bcdc_resource_name
-  )
-  
-  filter_select(
-    id = "file_name",
-    label = "File Name",
-    sharedData = data,
-    group = ~ file_name
   )
 ```
 
@@ -92,13 +78,12 @@ reactable(
   searchable = TRUE,
   # filterable = TRUE,
   columns = list(
-    data_provider = colDef(name = "DIP Data Provider"),
     title = colDef(name = "BCDC Record Name"),
     bcdc_resource_name = colDef(name = "BCDC Resource Name"),
-    file_name = colDef(name = "File Name"),
-    field_name = colDef(name = "Field Name"),
-    identifier_classification = colDef(name = "Identifier Classification"),
-    field_description = colDef(name = "Description"),
+    name = colDef(name = "Variable"),
+    var_class = colDef(name = "Variable Classification"),
+    type = colDef(name = "Type"),
+    description = colDef(name = "Description"),
     bcdc_record_url = colDef(name = "BCDC Record url", html = TRUE,
                              cell = function(value) {
     url <- value
