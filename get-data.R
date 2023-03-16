@@ -10,6 +10,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 
+## Load libraries
 library(bcdata) #uses dev version of {bcdata} remotes::install_github("bcgov/bcdata")
 library(dplyr)
 library(purrr)
@@ -17,7 +18,9 @@ library(janitor)
 library(stringr)
 library(tidyr)
 
-## function to concatenate all metadata resources (files) for one bcdc record
+
+## Function to concatenate all metadata resources (files) for one 
+## BCDC record -- only works with DIP CSV or DIP JSON files
 concatenate_all_record_resources <- function(record) {
   bcdc_record <- bcdc_get_record(record) 
   
@@ -55,28 +58,19 @@ concatenate_all_record_resources <- function(record) {
   d2
 }
 
-## test concatenate_all_record_resources() on one record
+## Test concatenate_all_record_resources() on one record
 # concatenate_all_record_resources("184b49e0-8e60-4e1b-9886-854db71c1a0e") #json
 # concatenate_all_record_resources("36ad8c2b-a884-44b6-b846-d230673142f2") #csv
 # concatenate_all_record_resources("94b68713-d696-4749-8cc9-bf63ffa09084") #csv+pdf
 
-## data frame of all dip metadata records in the B.C. Data Catalogue
-# dip_records_df <- bcdc_list_group_records("data-innovation-program")
-dip_records <-
-  bcdc_search(organization = "data-innovation-program-dip")
 
-# rm "extras" sub-element as not all elements have it
-dip_records_no_extras <-
-  lapply(dip_records, function(x)
-    x[names(x) != "extras"])
-
-dip_records_df <-
-  data.frame(purrr::reduce(dip_records_no_extras, rbind))
+## Data frame of all DIP metadata records in the BCDC
+dip_records_df <- bcdc_list_organization_records("data-innovation-program-dip")
 
 dip_records_active <- dip_records_df |>
   filter(!str_detect(name, "superseded")) #remove deprecated records
 
-## grab and concatenate metadata files for each dip record into a list
+## Grab and concatenate metadata files for each DIP record into a list
 metadata_by_record <- map(dip_records_active$id,
                           ~ concatenate_all_record_resources(.x)) |>
   setNames(dip_records_active$title)
@@ -86,12 +80,11 @@ metadata_by_record <- map(dip_records_active$id,
 # saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
-## Explore metadata column names for each DIP record
-map(metadata_by_record, ~ colnames(.x))
+# map(metadata_by_record, ~ colnames(.x))
 # metadata_by_record[[1]]
 
 
-## Tidy JSON API elements
+## Tidy dip JSON API resources
 json_metadata_list <- metadata_by_record |>
   keep( ~ ("json" %in% .$ext))
 
@@ -113,11 +106,12 @@ tidy_json_metadata <- function(x) {
     ))
 }
 
-# map over json API metadata records
+# map over JSON API metadata records
 df_metadata_json <- map_dfr(json_metadata_list,
                             ~ tidy_json_metadata(.x))
 
-## Tidy CSV API elements
+
+## Tidy DIP CSV API resources
 csv_metadata_list <- metadata_by_record |> 
   keep(~("csv" %in% .$ext))
 
@@ -139,11 +133,11 @@ tidy_csv_metadata <- function(x) {
     ))
 }
 
-# map over csv API metadata records
+# map over CSV API metadata records
 df_metadata_csv <- map_dfr(csv_metadata_list,
                             ~ tidy_csv_metadata(.x))
 
-## Collapse the csv code table rows to 1 per resource (since the attributes are all NA)
+## Collapse the csv "code table" rows to 1 per resource (since the attributes are all NA)
 code_files <- df_metadata_csv |> 
   filter(is.na(name)) |> 
   group_by(bcdc_resource_name) |> 
@@ -156,41 +150,16 @@ df_metadata_csv_reduced <-
   filter(!bcdc_resource_name %in% code_names) |> 
   bind_rows(code_files)
 
-## Final tidying step
+
+## Join JSON+CSV tables and final tidying
 tidy_metadata <- df_metadata_csv_reduced |> 
   bind_rows(df_metadata_json) |> 
   mutate(
     var_class = str_replace(var_class, "�", "-"),
-    description = str_replace_all(description, "�", " ")
-  ) |> 
-  mutate(
-    data_provider = case_when(
-      str_detect(bcdc_resource_name, "AG") ~ "Ministry of Attorney General",
-      str_detect(bcdc_resource_name, "MOH") ~ "Ministry of Health",
-      str_detect(bcdc_resource_name, "Clients_case_metadata") ~ "Ministry of Health",
-      str_detect(bcdc_resource_name, "Statscan") ~ "Statistics Canada",
-      str_detect(bcdc_resource_name, "IncomeBands") ~ "Statistics Canada",
-      str_detect(bcdc_resource_name, "SDPR") ~ "Ministry of Social Development and Poverty Reduction",
-      str_detect(bcdc_resource_name, "MED") ~ "Ministry of Education",
-      str_detect(bcdc_resource_name, "EDUC") ~ "Ministry of Education",
-      str_detect(bcdc_resource_name, "HELP") ~ "Ministry of Education",
-      str_detect(bcdc_resource_name, "LMID") ~ "Ministry of Advanced Education",
-      str_detect(bcdc_resource_name, "MCFD") ~ "Ministry of Children and Family Development",
-      str_detect(bcdc_resource_name, "BCHC") ~ "BC Housing",
-      str_detect(bcdc_resource_name, "AG") ~ "Attorney General's Office",
-      str_detect(bcdc_resource_name, "registration") ~ "Ministry of Health",
-      str_detect(bcdc_resource_name, "PHSA") ~ "Ministry of Health",
-      str_detect(bcdc_resource_name, "SES") ~ "Ministry of Education",
-      str_detect(bcdc_resource_name, "Health") ~ "Ministry of Health",
-      str_detect(bcdc_resource_name, "CLBC") ~ "Community Living BC",
-      str_detect(bcdc_resource_name, "ICBC") ~ "Insurance Corporation of British Columbia",
-      str_detect(bcdc_resource_name, "MUNI") ~ "Ministry of Municipal Affairs",
-      TRUE ~ NA_character_
-    ),
+    description = str_replace_all(description, "�", " "),
     bcdc_record_url = str_sub(url, 1, 77)
-  )  |> 
+  ) |> 
   select(
-    data_provider,
     title,
     bcdc_resource_name,
     name,
@@ -202,6 +171,5 @@ tidy_metadata <- df_metadata_csv_reduced |>
   
 ## save tidy data frame to /data
 dir.create("data", showWarnings = FALSE)
-saveRDS(df_metadata, "data/df-metadata.rds")
 saveRDS(tidy_metadata, "data/tidy-metadata.rds")
 
