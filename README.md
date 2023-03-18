@@ -10,13 +10,7 @@ The dip-metadata-viewer is built using the [{flexdashboard}](https://rmarkdown.r
 ### Code
 There are two scripts that are required to generate the viewer, they need to be run in sequence: (1) the `get-data.R` script to get and tidy the metadata from the B.C. Data Catalogue and (2) the `dip-metadata-viewer.Rmd` R Markdown file to generate or "knit" the html dip-metadata-viewer.
 
-All the required packages can be installed from CRAN using `install.packages()`, but you will need to install the development version of [bcdata](https://github.com/bcgov/bcdata):
-
-
-```r
-install.packages("remotes") # If you don't already have it installed
-remotes::install_github("bcgov/bcdata")
-```
+All of the required packages can be installed from CRAN using `install.packages()`.
 
 ### Getting Help or Reporting an Issue
 
