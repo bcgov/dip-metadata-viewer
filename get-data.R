@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 ## Load libraries
-library(bcdata) #uses dev version of {bcdata} remotes::install_github("bcgov/bcdata")
+library(bcdata)
 library(dplyr)
 library(purrr)
 library(janitor)
