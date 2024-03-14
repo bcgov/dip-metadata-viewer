@@ -14,6 +14,7 @@
 ## Load libraries
 library(bcdata)
 library(dplyr)
+library(janitor)
 library(purrr)
 library(stringr)
 library(tidyr)
@@ -72,7 +73,7 @@ saveRDS(metadata_by_record, "tmp/metadata-list.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
 
-## Check list
+## Check list of records
 map(metadata_by_record, ~ colnames(.x))
 metadata_by_record[[5]]
 
@@ -84,8 +85,8 @@ tidy_csv_metadata <- function(x) {
     select(any_of(
       c(
         "title",
-        "bcdc_resource_name" = "resources.name",
-        "bcdc_resource_name" = "resources.path",
+        "bcdc_resource_name",
+        "dip_resource_name" = "resources.name",
         "variable" = "resources.schema.fields.name",
         "variable_classification" = "resources.schema.fields.var_class",
         "description" = "resources.schema.fields.description",
@@ -105,7 +106,9 @@ tidy_metadata <- df_metadata_csv |>
     variable_classification = str_replace(variable_classification, "�", "-"),
     description = str_replace_all(description, "�", " "),
     bcdc_record_url = str_sub(bcdc_resource_url, 1, 77)
-  )
+  ) |> 
+  select(-bcdc_resource_url,
+         -bcdc_resource_name)
 
 
 ## save tidy data frame to /data
@@ -114,7 +117,7 @@ saveRDS(tidy_metadata, "data/tidy-metadata.rds")
 
 
 
-## Codes only ------------------------------------------------------------------
+## Explore codes ---------------------------------------------------------------
 
 #all code rows except demographic survey
 tidy_csv_codes <- function(x) {
@@ -124,7 +127,8 @@ tidy_csv_codes <- function(x) {
   select(any_of(
     c(
       "title",
-      "bcdc_resource_name" = "resources.name",
+      "bcdc_resource_name",
+      "dip_resource_name" = "resources.name",
       "variable" = "resources.schema.fields.name",
       "variable_classification" = "resources.schema.fields.var_class",
       "description" = "resources.schema.fields.description",
@@ -137,7 +141,24 @@ tidy_csv_codes <- function(x) {
 df_codes_csv <- map_dfr(metadata_by_record,
                            ~ tidy_csv_codes(.x))
 
+codes_survey <- metadata_by_record[["Metadata for BC Demographic Survey - E01"]] |> 
+  filter(str_detect(bcdc_resource_name, "Codes|Code")) |> 
+  mutate("variable_classification" = "99a. Research Content") |> 
+  select(any_of(
+    c(
+      "title",
+      "bcdc_resource_name",
+      "variable" = "Q",
+      "variable_classification",
+      "description" = "QC_DESC",
+      "variable_code_value" = "Q_CODE",
+      "bcdc_resource_url" = "url"
+    ))) |> 
+  mutate(dip_resource_name = NA)
+
+
 tidy_code_data <- df_codes_csv |> 
+  bind_rows(df_codes_csv) |> 
   mutate(
     variable_classification = str_replace(variable_classification, "�", "-"),
     description = str_replace_all(description, "�", " "),
@@ -146,18 +167,16 @@ tidy_code_data <- df_codes_csv |>
   select(
     "title",
     "bcdc_resource_name",
+    "dip_resource_name",
     "variable",
     "variable_classification",
     "description",
     "variable_code_value",
-    "bcdc_resource_url",
     "bcdc_record_url"
   )
 
-survey <- metadata_by_record[["Metadata for BC Demographic Survey - E01"]] |> 
-  filter(str_detect(bcdc_resource_name, "Codes|Code"))
 
-## save tidy data frame to /data
+## save tidy code dataframe to /data
 dir.create("data", showWarnings = FALSE)
-saveRDS(tidy_metadata, "data/tidy-metadata.rds")
+saveRDS(tidy_code_data, "data/tidy-code-data.rds")
 
