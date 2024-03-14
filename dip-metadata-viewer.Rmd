@@ -51,10 +51,10 @@ Column {data-width=200}
   )
   
    filter_select(
-    id = "bcdc_resource_name",
-    label = "BCDC Resource Name",
+    id = "dip_resource_name",
+    label = "DIP Resource Name",
     sharedData = data,
-    group = ~ bcdc_resource_name
+    group = ~ dip_resource_name
   )
 ```
 
@@ -79,16 +79,22 @@ reactable(
   # filterable = TRUE,
   columns = list(
     title = colDef(name = "BCDC Record Name"),
-    bcdc_resource_name = colDef(name = "BCDC Resource Name"),
-    name = colDef(name = "Variable"),
-    var_class = colDef(name = "Variable Classification"),
-    type = colDef(name = "Type"),
+    # bcdc_resource_name = colDef(name = "BCDC Resource Name"),
+    dip_resource_name = colDef(name = "DIP Resource Name"),
+    variable = colDef(name = "Variable"),
+    variable_classification = colDef(name = "Variable Classification"),
+    # type = colDef(name = "Type"),
     description = colDef(name = "Description"),
     bcdc_record_url = colDef(name = "BCDC Record url", html = TRUE,
                              cell = function(value) {
     url <- value
     htmltools::tags$a(href = url, as.character(value))
   })
+  #  bcdc_resource_url = colDef(name = "BCDC Resource url", html = TRUE,
+  #                            cell = function(value) {
+  #   url <- value
+  #   htmltools::tags$a(href = url, as.character(value))
+  # })
   ),
   defaultPageSize = 100
 )
