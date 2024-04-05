@@ -42,7 +42,7 @@ concatenate_all_record_resources <- function(record) {
                            title = record_title)
                 }
                 else
-                  (message("Sorry, this resource will not be read since it is not CSV-formatted")))
+                  (message(paste0("Sorry, the resource ", resources_df[resources_df$id == .x, "name"], " will not be read since it is not CSV-formatted"))))
   
   d2 <- d |>
     left_join(resources_df, by = c("bcdc_resource_name" = "name"))
