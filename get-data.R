@@ -107,7 +107,13 @@ tidy_metadata <- df_metadata_csv |>
     description = str_replace_all(description, "�", " "),
     bcdc_record_url = str_sub(bcdc_resource_url, 1, 77)
   ) |> 
-  select(-bcdc_resource_url,
+  select(title, 
+         dip_resource_name,
+         variable,
+         variable_classification,
+         description,
+         bcdc_record_url,
+         -bcdc_resource_url,
          -bcdc_resource_name)
 
 
