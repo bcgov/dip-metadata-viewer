@@ -61,7 +61,6 @@ concatenate_all_record_resources <- function(record) {
 ## Data frame of all DIP metadata records in the BCDC
 dip_records_df <- bcdc_list_organization_records("data-innovation-program-dip")
 
-
 ## Grab and concatenate metadata files for each DIP record into a list
 metadata_by_record <- map(dip_records_df$id,
                           ~ concatenate_all_record_resources(.x)) |>
@@ -70,12 +69,13 @@ metadata_by_record <- map(dip_records_df$id,
 ## save list to /tmp
 dir.create("tmp", showWarnings = FALSE)
 saveRDS(metadata_by_record, "tmp/metadata-list.rds")
+# metadata_by_record_previous <- readRDS("tmp/metadata-list-previous.rds")
 # metadata_by_record <- readRDS("tmp/metadata-list.rds")
 
 
 ## Check list of records
 map(metadata_by_record, ~ colnames(.x))
-metadata_by_record[[5]]
+metadata_by_record[[28]]
 
 
 ## Tidy DIP CSV Resources
